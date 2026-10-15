@@ -23,11 +23,12 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   *, *::before, *::after { box-sizing: inherit; }
-  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); background: var(--wall); }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); background: var(--wall); overscroll-behavior: none; }
   body {
     height: 100%;
     margin: 0;
     overflow: hidden;
+    overscroll-behavior: none;
     background: var(--wall);
     color: var(--hint);
     font-family: "Averia Serif Libre", Palatino, "Palatino Linotype", Georgia, serif;
@@ -41,16 +42,6 @@
       radial-gradient(70% 90% at 62% 38%, rgba(255, 251, 232, .3) 0%, rgba(255, 251, 232, 0) 70%),
       radial-gradient(120% 100% at 55% 40%, var(--wall) 0%, var(--wall) 40%, var(--wall-deep) 100%);
     pointer-events: none;
-  }
-
-  .veil {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    background: radial-gradient(95% 95% at 55% 40%, rgba(255, 250, 235, .08) 0%, rgba(250, 238, 205, .17) 100%);
-    -webkit-backdrop-filter: contrast(.9) saturate(.92) blur(.75px);
-    backdrop-filter: contrast(.9) saturate(.92) blur(.75px);
   }
 
   .content {
@@ -104,7 +95,7 @@
     width: 55%;
     height: 100%;
     display: block;
-    touch-action: none;
+    touch-action: auto;
     outline: none;
   }
 
@@ -153,7 +144,6 @@
 </head>
 <body>
   <div class="wall" aria-hidden="true"></div>
-  <div class="veil" aria-hidden="true"></div>
   <main class="content">
     <h1><img src="logo.png?v=2" alt="Saddi"></h1>
     <p class="lead">Something is cooking.</p>
@@ -935,9 +925,73 @@
   steel.envMapIntensity = 1.4;
   nailSteel.envMapIntensity = 1.05;
 
+  const veilRT = new THREE.WebGLRenderTarget(1, 1, {
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    format: THREE.RGBAFormat,
+    encoding: THREE.sRGBEncoding,
+    depthBuffer: true,
+    stencilBuffer: false,
+  });
+  veilRT.texture.generateMipmaps = false;
+  veilRT.texture.flipY = false;
+  const veilCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const veilMat = new THREE.ShaderMaterial({
+    uniforms: {
+      tDiffuse: { value: veilRT.texture },
+      texel: { value: new THREE.Vector2(1, 1) },
+    },
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+    vertexShader: [
+      'varying vec2 vUv;',
+      'void main() {',
+      '  vUv = uv;',
+      '  gl_Position = vec4(position.xy, 0.0, 1.0);',
+      '}',
+    ].join('\n'),
+    fragmentShader: [
+      'uniform sampler2D tDiffuse;',
+      'uniform vec2 texel;',
+      'varying vec2 vUv;',
+      'vec4 tap(vec2 uv) {',
+      '  vec4 s = texture2D(tDiffuse, uv);',
+      '  s.rgb *= s.a;',
+      '  return s;',
+      '}',
+      'void main() {',
+      '  vec2 px = texel;',
+      '  vec4 acc = tap(vUv) * 0.20;',
+      '  acc += tap(vUv + vec2(px.x, 0.0)) * 0.12;',
+      '  acc += tap(vUv - vec2(px.x, 0.0)) * 0.12;',
+      '  acc += tap(vUv + vec2(0.0, px.y)) * 0.12;',
+      '  acc += tap(vUv - vec2(0.0, px.y)) * 0.12;',
+      '  acc += tap(vUv + vec2(px.x, px.y)) * 0.08;',
+      '  acc += tap(vUv + vec2(-px.x, px.y)) * 0.08;',
+      '  acc += tap(vUv + vec2(px.x, -px.y)) * 0.08;',
+      '  acc += tap(vUv + vec2(-px.x, -px.y)) * 0.08;',
+      '  if (acc.a < 0.001) { gl_FragColor = vec4(0.0); return; }',
+      '  vec3 rgb = acc.rgb / acc.a;',
+      '  rgb = (rgb - 0.5) * 0.9 + 0.5;',
+      '  float gray = dot(rgb, vec3(0.2126, 0.7152, 0.0722));',
+      '  rgb = mix(vec3(gray), rgb, 0.92);',
+      '  rgb = mix(rgb, vec3(0.980, 0.941, 0.804), 0.08);',
+      '  gl_FragColor = vec4(rgb, acc.a);',
+      '}',
+    ].join('\n'),
+  });
+  const veilScene = new THREE.Scene();
+  veilScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), veilMat));
+
   function resize() {
     const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
     renderer.setSize(w, h, false);
+    const pw = Math.max(1, renderer.domElement.width), ph = Math.max(1, renderer.domElement.height);
+    const scale = (pw * ph > 1600000) ? 1 : 2;
+    veilRT.setSize(pw * scale, ph * scale);
+    veilMat.uniforms.texel.value.set(0.55 * dpr / pw, 0.55 * dpr / ph);
     camera.aspect = w / h;
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     camDist = Math.max(7.0 / 2 / t, 4.6 / 2 / (t * camera.aspect));
@@ -960,6 +1014,7 @@
     };
   }
   function onMove(e) {
+    if (e.pointerType !== 'mouse') return;
     const p = toNdc(e);
     const now = performance.now();
     if (pointer.inside && pointer.lastT) {
@@ -1061,7 +1116,16 @@
     }
     moteGeo.attributes.position.needsUpdate = true;
 
+    renderer.setRenderTarget(veilRT);
     renderer.render(scene, camera);
+    renderer.setRenderTarget(null);
+    const prevEnc = renderer.outputEncoding;
+    const prevTone = renderer.toneMapping;
+    renderer.outputEncoding = THREE.LinearEncoding;
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.render(veilScene, veilCam);
+    renderer.outputEncoding = prevEnc;
+    renderer.toneMapping = prevTone;
     if (!revealed) { revealed = true; fontsReady.then(reveal); }
     if (pageVisible) requestAnimationFrame(frame);
   }
