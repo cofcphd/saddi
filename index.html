@@ -7,6 +7,8 @@
 <meta name="description" content="Saddi CPH. Something is cooking. Stay tuned.">
 <meta name="theme-color" content="#f6e29a">
 <style>html,body{background:#f6e29a}</style>
+<link rel="preload" href="logo.png?v=2" as="image">
+<link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" as="script">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@400&display=swap" rel="stylesheet">
@@ -128,20 +130,20 @@
   }
   .hint.gone { opacity: 0; }
 
-  canvas#scene { opacity: 0; transition: opacity .45s ease; }
-  .ready canvas#scene { opacity: 1; }
+  .content, canvas#scene { opacity: 0; transition: opacity .35s ease; }
+  .ready .content, .ready canvas#scene { opacity: 1; }
 
   @media (prefers-reduced-motion: reduce) {
     .hint { transition: none; }
-    canvas#scene { transition: none; }
+    .content, canvas#scene { transition: none; }
   }
 </style>
-<noscript><style>canvas#scene { opacity: 1; }</style></noscript>
+<noscript><style>.content, canvas#scene { opacity: 1; }</style></noscript>
 </head>
 <body>
   <div class="wall" aria-hidden="true"></div>
   <main class="content">
-    <h1><img src="logo.png?v=2" alt="Saddi"></h1>
+    <h1><img src="logo.png?v=2" alt="Saddi" width="895" height="312"></h1>
     <p class="lead">Something is cooking.</p>
     <p class="sub">But we're keeping things under wraps a little longer.</p>
     <p class="tune">Stay tuned.</p>
@@ -160,11 +162,7 @@
   const PHONE = Math.min(window.innerWidth, window.innerHeight) <= 900
     && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1);
 
-  const t0 = performance.now();
-  const reveal = () => {
-    if (!reduceMotion && performance.now() - t0 > 280) canvas.style.transitionDuration = '1.6s';
-    document.documentElement.classList.add('ready');
-  };
+  const reveal = () => document.documentElement.classList.add('ready');
   const fontsReady = (document.fonts && document.fonts.ready)
     ? Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))])
     : Promise.resolve();
@@ -192,7 +190,7 @@
   const AIR = 0.95;
   const DAMP = 0.994;
   const SUB = 1 / 120;
-  const MAX_SUB = PHONE ? 4 : 3;
+  const MAX_SUB = 3;
   const ITER = 7;
   const TOP = HOOK_Y - LOOP_L;
   const MID = SX / 2;
@@ -1089,10 +1087,6 @@
   let accum = 0, last = performance.now(), clock = 0, revealed = false;
 
   function frame(now) {
-    if (PHONE && now - last < 32) {
-      if (pageVisible) requestAnimationFrame(frame);
-      return;
-    }
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
     clock += dt;
@@ -1124,7 +1118,7 @@
     renderer.render(veilScene, veilCam);
     renderer.outputEncoding = prevEnc;
     renderer.toneMapping = prevTone;
-    if (!revealed) { revealed = true; requestAnimationFrame(reveal); }
+    if (!revealed) { revealed = true; reveal(); }
     if (pageVisible) requestAnimationFrame(frame);
   }
   let pageVisible = true;
@@ -1133,7 +1127,7 @@
     if (pageVisible) { last = performance.now(); requestAnimationFrame(frame); }
   });
   (function settle(left) {
-    const chunk = 30;
+    const chunk = PHONE ? 80 : 40;
     const n = Math.min(chunk, left);
     for (let i = 0; i < n; i++) { step(simTime, i === 0); simTime += SUB; }
     if (left - n > 0) requestAnimationFrame(() => settle(left - n));
@@ -1142,7 +1136,7 @@
       last = performance.now();
       requestAnimationFrame(frame);
     }
-  })(PHONE ? 160 : 280);
+  })(PHONE ? 100 : 200);
 })();
 </script>
 </body>
