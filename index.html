@@ -188,9 +188,10 @@
   const G = -23;
   const AIR = 0.95;
   const DAMP = 0.994;
-  const SUB = PHONE ? 1 / 90 : 1 / 120;
+  const SUB = 1 / 120;
   const MAX_SUB = PHONE ? 2 : 3;
-  const ITER = PHONE ? 5 : 7;
+  let settling = true;
+  const ITER = 7;
   const TOP = HOOK_Y - LOOP_L;
   const MID = SX / 2;
 
@@ -342,7 +343,7 @@
     const idle = (typeof pointer !== 'undefined' && pointer.energy > 0.15) ? 0.55 : 1;
     const g = (0.6 + CALM * (0.26 * Math.sin(t * 0.23) + 0.13 * Math.sin(t * 0.57 + 1.7) + 0.05 * Math.sin(t * 1.31 + 0.4))) * idle;
     const ang = 0.95 + 0.45 * Math.sin(t * 0.11 + 2.0);
-    const S = 3.0 * g;
+    const S = 3.0 * g * (PHONE && !settling ? 0.62 : 1);
     wind.x = Math.cos(ang) * S;
     wind.z = Math.sin(ang) * S;
     wind.y = 0.25 * S;
@@ -358,7 +359,7 @@
     updateHang();
     updateWind(t);
     const inv = 1 / SUB, A0 = REST * REST * 0.5, dt2 = SUB * SUB;
-    const rip = CALM;
+    const rip = (PHONE && !settling) ? 0.65 : CALM;
 
     for (let k = 0; k < N * 3; k += 3) {
       acc[k] = ext[k];
@@ -443,15 +444,15 @@
     for (let k = 2; k < N * 3; k += 3) if (pos[k] < wz) pos[k] = wz;
   }
 
-  const dpr = Math.min(window.devicePixelRatio || 1, PHONE ? 1.2 : 1.75);
+  const dpr = Math.min(window.devicePixelRatio || 1, PHONE ? 1.6 : 1.75);
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: !PHONE,
+      antialias: true,
       alpha: true,
       stencil: false,
-      powerPreference: PHONE ? 'low-power' : 'high-performance',
+      powerPreference: 'high-performance',
     });
   } catch (err) {
     hint.textContent = 'Your browser cannot show the 3D animation because WebGL is turned off.';
@@ -466,7 +467,7 @@
   renderer.toneMappingExposure = 0.96;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = PHONE ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap;
-  renderer.shadowMap.autoUpdate = !PHONE;
+  renderer.shadowMap.autoUpdate = true;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
@@ -583,7 +584,7 @@
   }
 
   const linen = makeLinen();
-  const RS = PHONE ? 2 : 3;
+  const RS = 3;
   const RC = SX * RS + 1, RR = SY * RS + 1, RN = RC * RR;
   const EC = COLS + 2, ER = ROWS + 2;
   const gx = new Float32Array(EC * ER * 3);
@@ -792,7 +793,7 @@
   jaw.quadraticCurveTo(-0.1, 0.055, -0.145, -0.078);
   jaw.quadraticCurveTo(-0.145, -0.1, -0.12, -0.1);
   jaw.closePath();
-  const jawGeo = new THREE.ExtrudeGeometry(jaw, { depth: 0.008, bevelEnabled: true, bevelThickness: 0.0035, bevelSize: 0.0035, bevelSegments: PHONE ? 2 : 6, curveSegments: PHONE ? 12 : 28 });
+  const jawGeo = new THREE.ExtrudeGeometry(jaw, { depth: 0.008, bevelEnabled: true, bevelThickness: 0.0035, bevelSize: 0.0035, bevelSegments: PHONE ? 4 : 6, curveSegments: PHONE ? 20 : 28 });
   function bentJaw(sign) {
     const gm = jawGeo.clone(), p = gm.attributes.position;
     for (let i = 0; i < p.count; i++) {
@@ -834,14 +835,14 @@
   }
   const front = new THREE.Mesh(bentJaw(1), steel); front.position.z = 0.014;
   const back = new THREE.Mesh(bentJaw(-1), steel); back.position.z = -0.014;
-  const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.15, PHONE ? 16 : 48), steel);
+  const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.15, PHONE ? 32 : 48), steel);
   hinge.rotation.z = Math.PI / 2; hinge.position.y = 0.185;
   const ears = [-1, 1].map((sd) => {
-    const e = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.009, PHONE ? 8 : 20, PHONE ? 16 : 48), steel);
+    const e = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.009, PHONE ? 12 : 20, PHONE ? 32 : 48), steel);
     e.rotation.y = Math.PI / 2; e.position.set(sd * 0.075, 0.185, 0);
     return e;
   });
-  const crimp = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, 0.085, PHONE ? 16 : 48), steel);
+  const crimp = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, 0.085, PHONE ? 32 : 48), steel);
   crimp.position.y = 0.255;
   body.add(front, back, hinge, ...ears, crimp);
   const CORD_R = 0.011, TOP_R = 0.05;
@@ -854,7 +855,7 @@
   }
   cordPts.push([TOP_R, cy - 0.03], [0.042, crimpTop + 0.17], [0.022, crimpTop + 0.07], [0.008, crimpTop]);
   const cordCurve = new THREE.CatmullRomCurve3(cordPts.map(([x, y]) => new THREE.Vector3(x, y, 0)), false, 'centripetal');
-  const cord = new THREE.Mesh(new THREE.TubeGeometry(cordCurve, PHONE ? 48 : 120, CORD_R, PHONE ? 8 : 16, false), leather);
+  const cord = new THREE.Mesh(new THREE.TubeGeometry(cordCurve, PHONE ? 80 : 120, CORD_R, PHONE ? 12 : 16, false), leather);
   clip.add(body, cord);
   clip.traverse((o) => { o.castShadow = true; });
   scene.add(clip);
@@ -862,10 +863,10 @@
 
   const NAIL_R = 0.012;
   const nail = new THREE.Group();
-  const shank = new THREE.Mesh(new THREE.CylinderGeometry(NAIL_R, NAIL_R, 0.25, PHONE ? 12 : 32), nailSteel);
+  const shank = new THREE.Mesh(new THREE.CylinderGeometry(NAIL_R, NAIL_R, 0.25, PHONE ? 24 : 32), nailSteel);
   shank.rotation.x = Math.PI / 2;
   shank.position.z = 0.125;
-  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.012, PHONE ? 16 : 48), nailSteel);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.012, PHONE ? 32 : 48), nailSteel);
   head.rotation.x = Math.PI / 2;
   head.position.z = 0.25;
   nail.add(shank, head);
@@ -878,7 +879,7 @@
   wallMat.onBeforeCompile = (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
       'gl_FragColor = vec4( color, opacity * ( 1.0 - getShadowMask() ) );',
-      'float occl = 1.0 - getShadowMask(); occl = max(0.0, (occl - 0.1) / 0.9); occl = smoothstep(0.0, 1.0, occl); if (occl < 0.015) discard; gl_FragColor = vec4( color, opacity * occl );'
+      'float occl = 1.0 - getShadowMask(); occl = max(0.0, (occl - 0.1) / 0.9); float fw = fwidth(occl) * 2.2; occl = smoothstep(-fw, 1.0 + fw, occl); if (occl < 0.015) discard; gl_FragColor = vec4( color, opacity * occl );'
     );
   };
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(14, 16), wallMat);
@@ -890,8 +891,8 @@
   const key = new THREE.DirectionalLight(0xfff2dc, 1.25);
   key.position.set(-4.5, 5, 8);
   key.castShadow = true;
-  key.shadow.mapSize.set(PHONE ? 512 : 1024, PHONE ? 512 : 1024);
-  key.shadow.radius = PHONE ? 8 : 12;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.radius = PHONE ? 10 : 12;
   key.shadow.bias = -0.0005;
   Object.assign(key.shadow.camera, { left: -4, right: 4.5, top: 5, bottom: -4.5, near: 1, far: 30 });
   const fill = new THREE.DirectionalLight(0xe6edf2, 0.3);
@@ -914,14 +915,17 @@
   steel.envMapIntensity = 1.4;
   nailSteel.envMapIntensity = 1.05;
 
-  const veilRT = new THREE.WebGLRenderTarget(1, 1, {
+  const rtOpts = {
     minFilter: THREE.LinearFilter,
     magFilter: THREE.LinearFilter,
     format: THREE.RGBAFormat,
     encoding: THREE.sRGBEncoding,
     depthBuffer: true,
     stencilBuffer: false,
-  });
+  };
+  const veilRT = (PHONE && renderer.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget)
+    ? new THREE.WebGLMultisampleRenderTarget(1, 1, Object.assign({ samples: 4 }, rtOpts))
+    : new THREE.WebGLRenderTarget(1, 1, rtOpts);
   veilRT.texture.generateMipmaps = false;
   veilRT.texture.flipY = false;
   const veilCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -952,25 +956,15 @@
       '}',
       'void main() {',
       '  vec2 px = texel;',
-      PHONE
-        ? [
-          '  vec4 acc = tap(vUv) * 0.36;',
-          '  acc += tap(vUv + vec2(px.x, 0.0)) * 0.16;',
-          '  acc += tap(vUv - vec2(px.x, 0.0)) * 0.16;',
-          '  acc += tap(vUv + vec2(0.0, px.y)) * 0.16;',
-          '  acc += tap(vUv - vec2(0.0, px.y)) * 0.16;',
-        ].join('\n')
-        : [
-          '  vec4 acc = tap(vUv) * 0.20;',
-          '  acc += tap(vUv + vec2(px.x, 0.0)) * 0.12;',
-          '  acc += tap(vUv - vec2(px.x, 0.0)) * 0.12;',
-          '  acc += tap(vUv + vec2(0.0, px.y)) * 0.12;',
-          '  acc += tap(vUv - vec2(0.0, px.y)) * 0.12;',
-          '  acc += tap(vUv + vec2(px.x, px.y)) * 0.08;',
-          '  acc += tap(vUv + vec2(-px.x, px.y)) * 0.08;',
-          '  acc += tap(vUv + vec2(px.x, -px.y)) * 0.08;',
-          '  acc += tap(vUv + vec2(-px.x, -px.y)) * 0.08;',
-        ].join('\n'),
+      '  vec4 acc = tap(vUv) * 0.20;',
+      '  acc += tap(vUv + vec2(px.x, 0.0)) * 0.12;',
+      '  acc += tap(vUv - vec2(px.x, 0.0)) * 0.12;',
+      '  acc += tap(vUv + vec2(0.0, px.y)) * 0.12;',
+      '  acc += tap(vUv - vec2(0.0, px.y)) * 0.12;',
+      '  acc += tap(vUv + vec2(px.x, px.y)) * 0.08;',
+      '  acc += tap(vUv + vec2(-px.x, px.y)) * 0.08;',
+      '  acc += tap(vUv + vec2(px.x, -px.y)) * 0.08;',
+      '  acc += tap(vUv + vec2(-px.x, -px.y)) * 0.08;',
       '  if (acc.a < 0.02) { gl_FragColor = vec4(0.0); return; }',
       '  vec3 rgb = acc.rgb / acc.a;',
       '  rgb = (rgb - 0.5) * 0.9 + 0.5;',
@@ -990,7 +984,7 @@
     const pw = Math.max(1, renderer.domElement.width), ph = Math.max(1, renderer.domElement.height);
     const scale = PHONE ? 1 : ((pw * ph > 1600000) ? 1 : 2);
     veilRT.setSize(pw * scale, ph * scale);
-    veilMat.uniforms.texel.value.set(0.55 * dpr / pw, 0.55 * dpr / ph);
+    veilMat.uniforms.texel.value.set((PHONE ? 0.7 : 0.55) * dpr / pw, (PHONE ? 0.7 : 0.55) * dpr / ph);
     camera.aspect = w / h;
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     camDist = Math.max(7.0 / 2 / t, 4.6 / 2 / (t * camera.aspect));
@@ -1082,7 +1076,7 @@
   }
 
   let simTime = 0;
-  let accum = 0, last = performance.now(), clock = 0, revealed = false, collideFlip = 0;
+  let accum = 0, last = performance.now(), clock = 0, revealed = false;
 
   function frame(now) {
     if (PHONE && now - last < 32) {
@@ -1096,10 +1090,9 @@
     pointerForces();
 
     accum += dt;
-    collideFlip++;
     let n = 0;
     while (accum >= SUB && n < MAX_SUB) {
-      step(simTime, n === 0 && (!PHONE || (collideFlip & 1)));
+      step(simTime, n === 0);
       simTime += SUB; accum -= SUB; n++;
     }
     if (n === MAX_SUB) accum = 0;
@@ -1110,7 +1103,6 @@
     loop.quaternion.setFromUnitVectors(UP, loopDir.set(-hang.dx, -hang.dy, -hang.dz));
     posAttr.needsUpdate = true;
     normAttr.needsUpdate = true;
-    if (PHONE) renderer.shadowMap.needsUpdate = (collideFlip & 1) === 1;
 
     renderer.setRenderTarget(veilRT);
     renderer.render(scene, camera);
@@ -1133,10 +1125,16 @@
   (function settle(left) {
     const chunk = 30;
     const n = Math.min(chunk, left);
-    for (let i = 0; i < n; i++) { step(simTime, i === 0); simTime += SUB; }
+    for (let i = 0; i < n; i++) { step(simTime, PHONE || i === 0); simTime += SUB; }
     if (left - n > 0) requestAnimationFrame(() => settle(left - n));
-    else { clock = simTime; last = performance.now(); requestAnimationFrame(frame); }
-  })(PHONE ? 160 : 280);
+    else {
+      settling = false;
+      prev.set(pos);
+      clock = simTime;
+      last = performance.now();
+      requestAnimationFrame(frame);
+    }
+  })(280);
 })();
 </script>
 </body>
