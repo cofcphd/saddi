@@ -8,7 +8,6 @@
 <meta name="theme-color" content="#f6e29a">
 <style>html,body{background:#f6e29a}</style>
 <link rel="preload" href="logo.png?v=2" as="image">
-<link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" as="script">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@400&display=swap" rel="stylesheet">
@@ -98,20 +97,31 @@
     background: var(--wall);
   }
 
+  html.phone canvas#scene { display: none; }
+  html.phone .content {
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    padding: calc(env(safe-area-inset-top, 0px) + 32px) 28px calc(env(safe-area-inset-bottom, 0px) + 32px);
+  }
+  html.phone .content h1 { margin-bottom: 14px; }
+  html.phone .content h1 img { width: min(78vw, 280px); }
+  html.phone .content .lead { font-size: 20px; }
+  html.phone .content .sub { font-size: 15px; margin-bottom: 12px; }
+  html.phone .content .tune { font-size: 15px; }
   @media (max-width: 760px) {
+    canvas#scene { display: none; }
     .content {
       width: 100%;
-      bottom: auto;
-      height: 46%;
-      justify-content: flex-end;
-      padding: calc(env(safe-area-inset-top, 0px) + 24px) 24px 8px 28px;
+      height: 100%;
+      justify-content: center;
+      padding: calc(env(safe-area-inset-top, 0px) + 32px) 28px calc(env(safe-area-inset-bottom, 0px) + 32px);
     }
     .content h1 { margin-bottom: 14px; }
     .content h1 img { width: min(78vw, 280px); }
     .content .lead { font-size: 20px; }
     .content .sub { font-size: 15px; margin-bottom: 12px; }
     .content .tune { font-size: 15px; }
-    canvas#scene { top: 46%; width: 100%; height: 54%; }
   }
 
   .hint {
@@ -151,7 +161,6 @@
   <canvas id="scene" role="img" aria-label="A linen tea towel hanging from a chrome clip and leather cord on a nail, swaying in a light breeze"></canvas>
   <p class="hint" id="hint" role="status"></p>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (function () {
   'use strict';
@@ -167,8 +176,16 @@
     ? Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))])
     : Promise.resolve();
 
+  if (PHONE) {
+    document.documentElement.classList.add('phone');
+    reveal();
+    return;
+  }
+
+  function boot() {
   if (typeof THREE === 'undefined') {
     hint.textContent = 'The animation could not be loaded. Reload the page to try again.';
+    hint.classList.remove('gone');
     fontsReady.then(reveal);
     return;
   }
@@ -1136,7 +1153,21 @@
       last = performance.now();
       requestAnimationFrame(frame);
     }
-  })(PHONE ? 100 : 200);
+  })(200);
+  }
+
+  if (typeof THREE !== 'undefined') boot();
+  else {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+    s.onload = boot;
+    s.onerror = () => {
+      hint.textContent = 'The animation could not be loaded. Reload the page to try again.';
+      hint.classList.remove('gone');
+      fontsReady.then(reveal);
+    };
+    document.head.appendChild(s);
+  }
 })();
 </script>
 </body>
