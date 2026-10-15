@@ -128,16 +128,15 @@
   }
   .hint.gone { opacity: 0; }
 
-  .content, canvas#scene { opacity: 0; transition: opacity .9s ease; }
-  .ready .content, .ready canvas#scene { opacity: 1; }
+  canvas#scene { opacity: 0; transition: opacity .45s ease; }
+  .ready canvas#scene { opacity: 1; }
 
   @media (prefers-reduced-motion: reduce) {
     .hint { transition: none; }
-    .content, canvas#scene { transition: none; }
+    canvas#scene { transition: none; }
   }
 </style>
-<noscript><style>.content, canvas#scene { opacity: 1; }</style></noscript>
-<script>setTimeout(function () { document.documentElement.classList.add('ready'); }, 4000);</script>
+<noscript><style>canvas#scene { opacity: 1; }</style></noscript>
 </head>
 <body>
   <div class="wall" aria-hidden="true"></div>
@@ -161,7 +160,11 @@
   const PHONE = Math.min(window.innerWidth, window.innerHeight) <= 900
     && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1);
 
-  const reveal = () => document.documentElement.classList.add('ready');
+  const t0 = performance.now();
+  const reveal = () => {
+    if (!reduceMotion && performance.now() - t0 > 280) canvas.style.transitionDuration = '1.6s';
+    document.documentElement.classList.add('ready');
+  };
   const fontsReady = (document.fonts && document.fonts.ready)
     ? Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))])
     : Promise.resolve();
@@ -189,8 +192,7 @@
   const AIR = 0.95;
   const DAMP = 0.994;
   const SUB = 1 / 120;
-  const MAX_SUB = PHONE ? 2 : 3;
-  let settling = true;
+  const MAX_SUB = PHONE ? 4 : 3;
   const ITER = 7;
   const TOP = HOOK_Y - LOOP_L;
   const MID = SX / 2;
@@ -341,9 +343,17 @@
   const wind = { x: 0, y: 0, z: 0 };
   function updateWind(t) {
     const idle = (typeof pointer !== 'undefined' && pointer.energy > 0.15) ? 0.55 : 1;
+    if (PHONE) {
+      const ang = 1.05 + 0.36 * Math.sin(t * 0.42);
+      const S = 1.75 * idle;
+      wind.x = Math.cos(ang) * S;
+      wind.z = Math.sin(ang) * S;
+      wind.y = 0.26 * S;
+      return;
+    }
     const g = (0.6 + CALM * (0.26 * Math.sin(t * 0.23) + 0.13 * Math.sin(t * 0.57 + 1.7) + 0.05 * Math.sin(t * 1.31 + 0.4))) * idle;
     const ang = 0.95 + 0.45 * Math.sin(t * 0.11 + 2.0);
-    const S = 3.0 * g * (PHONE && !settling ? 0.62 : 1);
+    const S = 3.0 * g;
     wind.x = Math.cos(ang) * S;
     wind.z = Math.sin(ang) * S;
     wind.y = 0.25 * S;
@@ -359,7 +369,7 @@
     updateHang();
     updateWind(t);
     const inv = 1 / SUB, A0 = REST * REST * 0.5, dt2 = SUB * SUB;
-    const rip = (PHONE && !settling) ? 0.65 : CALM;
+    const rip = PHONE ? 0.58 : CALM;
 
     for (let k = 0; k < N * 3; k += 3) {
       acc[k] = ext[k];
@@ -484,7 +494,7 @@
   }
 
   function makeLinen() {
-    const TW = PHONE ? 512 : 768, TH = Math.round(TW * H / W);
+    const TW = PHONE ? 384 : 768, TH = Math.round(TW * H / W);
     const cv = document.createElement('canvas'); cv.width = TW; cv.height = TH;
     const bv = document.createElement('canvas'); bv.width = TW; bv.height = TH;
     const g = cv.getContext('2d'), b = bv.getContext('2d');
@@ -493,7 +503,7 @@
     g.fillStyle = TOWEL.linen; g.fillRect(0, 0, TW, TH);
     b.fillStyle = '#808080'; b.fillRect(0, 0, TW, TH);
 
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < (PHONE ? 24 : 80); i++) {
       const x = r() * TW, y = r() * TH, rad = 60 + r() * 280;
       const light = r() < 0.5;
       const col = light ? '255,247,230' : '118,94,58';
@@ -522,7 +532,7 @@
 
     function threads(vertical) {
       const span = vertical ? TW : TH, length = vertical ? TH : TW;
-      for (let u = 0; u < span; u += 2) {
+      for (let u = 0; u < span; u += PHONE ? 4 : 2) {
         let v = 0;
         while (v < length) {
           const run = 24 + r() * 220;
@@ -540,7 +550,7 @@
     threads(true);
     threads(false);
 
-    for (let i = 0; i < 2200; i++) {
+    for (let i = 0; i < (PHONE ? 400 : 2200); i++) {
       const x = r() * TW, y = r() * TH;
       const horiz = r() < 0.6;
       const len = 6 + r() * 46, th = 1.2 + r() * 1.6;
@@ -734,7 +744,7 @@
       envScene.add(m);
     }
     const pm = new THREE.PMREMGenerator(renderer);
-    const tex = pm.fromScene(envScene, 0.03).texture;
+    const tex = pm.fromScene(envScene, PHONE ? 0.08 : 0.03).texture;
     pm.dispose();
     return tex;
   }
@@ -762,7 +772,7 @@
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
     const g = cv.getContext('2d'), r = rng(41);
     g.fillStyle = '#8c624d'; g.fillRect(0, 0, 256, 64);
-    for (let i = 0; i < 1400; i++) {
+    for (let i = 0; i < (PHONE ? 280 : 1400); i++) {
       const light = r() < 0.45;
       g.fillStyle = light ? 'rgba(214,170,138,' + (0.25 + r() * 0.4) + ')' : 'rgba(70,42,28,' + (0.2 + r() * 0.4) + ')';
       g.fillRect(r() * 256, r() * 64, 1 + r() * 3, 1 + r() * 2);
@@ -1095,7 +1105,7 @@
       step(simTime, n === 0);
       simTime += SUB; accum -= SUB; n++;
     }
-    if (n === MAX_SUB) accum = 0;
+    if (accum > SUB * 4) accum = SUB * 2;
 
     smoothSurface();
     surfaceNormals();
@@ -1114,7 +1124,7 @@
     renderer.render(veilScene, veilCam);
     renderer.outputEncoding = prevEnc;
     renderer.toneMapping = prevTone;
-    if (!revealed) { revealed = true; fontsReady.then(reveal); }
+    if (!revealed) { revealed = true; requestAnimationFrame(reveal); }
     if (pageVisible) requestAnimationFrame(frame);
   }
   let pageVisible = true;
@@ -1125,16 +1135,14 @@
   (function settle(left) {
     const chunk = 30;
     const n = Math.min(chunk, left);
-    for (let i = 0; i < n; i++) { step(simTime, PHONE || i === 0); simTime += SUB; }
+    for (let i = 0; i < n; i++) { step(simTime, i === 0); simTime += SUB; }
     if (left - n > 0) requestAnimationFrame(() => settle(left - n));
     else {
-      settling = false;
-      prev.set(pos);
       clock = simTime;
       last = performance.now();
       requestAnimationFrame(frame);
     }
-  })(280);
+  })(PHONE ? 160 : 280);
 })();
 </script>
 </body>
