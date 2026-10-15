@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Saddi CPH</title>
 <meta name="description" content="Saddi CPH. Something is cooking. Stay tuned.">
-<meta name="theme-color" content="#f3dc8c">
+<meta name="theme-color" content="#f6e29a">
+<style>html,body{background:#f6e29a}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@400&display=swap" rel="stylesheet">
 <style>
   :root {
-    /* butter yellow, lighter in the middle and deeper toward the edges */
     --wall: #f6e29a;
     --wall-deep: #e3c46c;
     --hint: rgba(107, 28, 35, .72);
@@ -23,18 +23,17 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   *, *::before, *::after { box-sizing: inherit; }
-  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); background: var(--wall); }
   body {
     height: 100%;
     margin: 0;
     overflow: hidden;
-    background: var(--wall-deep);
+    background: var(--wall);
     color: var(--hint);
     font-family: "Averia Serif Libre", Palatino, "Palatino Linotype", Georgia, serif;
     font-style: normal;
   }
 
-  /* The backdrop: one flat butter yellow with a hard, bright flash falling on it from the front */
   .wall {
     position: fixed;
     inset: 0;
@@ -44,8 +43,6 @@
     pointer-events: none;
   }
 
-  /* A very soft veil over the whole scene (but behind the text): lifts the darkest
-     parts, takes a little contrast and saturation out, and rounds off the hard edges. */
   .veil {
     position: fixed;
     inset: 0;
@@ -56,7 +53,6 @@
     backdrop-filter: contrast(.9) saturate(.92) blur(.75px);
   }
 
-  /* Left: the message. Right: the towel. */
   .content {
     position: fixed;
     left: 0;
@@ -78,6 +74,8 @@
     display: block;
     width: min(100%, 28vw, 420px);
     height: auto;
+    -webkit-user-select: none;
+    user-select: none;
   }
   .content .lead {
     margin: 0 0 .5em;
@@ -142,8 +140,6 @@
   }
   .hint.gone { opacity: 0; }
 
-  /* Text and towel stay hidden until the font and the first frame are ready,
-     then fade in together so nothing pops in or jumps around. */
   .content, canvas#scene { opacity: 0; transition: opacity .9s ease; }
   .ready .content, .ready canvas#scene { opacity: 1; }
 
@@ -159,7 +155,7 @@
   <div class="wall" aria-hidden="true"></div>
   <div class="veil" aria-hidden="true"></div>
   <main class="content">
-    <h1><img src="logo.png" alt="Saddi"></h1>
+    <h1><img src="logo.png?v=2" alt="Saddi"></h1>
     <p class="lead">Something is cooking.</p>
     <p class="sub">But we're keeping things under wraps a little longer.</p>
     <p class="tune">Stay tuned.</p>
@@ -176,7 +172,6 @@
   const canvas = document.getElementById('scene');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // reveal the page once the font is loaded (but never wait more than 2.5 s for it)
   const reveal = () => document.documentElement.classList.add('ready');
   const fontsReady = (document.fonts && document.fonts.ready)
     ? Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))])
@@ -188,33 +183,26 @@
     return;
   }
 
-  /* ------------------------------------------------------------------
-     Farver â€“ ret her, hvis viskestykket skal have en anden farve
-     ------------------------------------------------------------------ */
   const TOWEL = {
-    linen:  '#d3bd99',   // hÃ¸r
-    stripe: '#3f5274',   // indigo striber
+    linen:  '#d3bd99',
+    stripe: '#3f5274',
   };
 
-  /* ==================================================================
-     CLOTH SIMULATION (verlet)
-     ================================================================== */
-  // SIM-START
   const CALM = reduceMotion ? 0.45 : 1;
   const SX = 32, SY = 44;
   const COLS = SX + 1, ROWS = SY + 1, N = COLS * ROWS;
   const W = 3.6, REST = W / SX, H = SY * REST;
-  const HOOK_Y = 3.45;                       // top of the nail, where the cord rests
-  const LOOP_L = 0.56;                       // nail â†’ corner: leather cord plus the clip
+  const HOOK_Y = 3.45;
+  const LOOP_L = 0.56;
   const WALL_Z = -0.25;
-  const HOOK_Z = WALL_Z + 0.13;              // the cord sits partway along the nail
+  const HOOK_Z = WALL_Z + 0.13;
   const G = -23;
   const AIR = 0.95;
   const DAMP = 0.994;
   const SUB = 1 / 120;
   const ITER = 7;
   const TOP = HOOK_Y - LOOP_L;
-  const MID = SX / 2;                        // the clip sits in the middle of the short top edge
+  const MID = SX / 2;
 
   const pos = new Float32Array(N * 3);
   const prev = new Float32Array(N * 3);
@@ -248,7 +236,6 @@
       }
       if (i < SX - 1) link(I(i, j), I(i + 2, j), 1);
       if (j < SY - 1) link(I(i, j), I(i, j + 2), 1);
-      // linen is crisp: longer links keep it from collapsing into a narrow rope when hung by a corner
       if (i < SX - 1 && j < SY - 1) { link(I(i, j), I(i + 2, j + 2), 0.6); link(I(i + 2, j), I(i, j + 2), 0.6); }
       if (i < SX - 3) link(I(i, j), I(i + 4, j), 0.4);
       if (j < SY - 3) link(I(i, j), I(i, j + 4), 0.4);
@@ -261,7 +248,6 @@
     CA[c] = cons[c * 4]; CB[c] = cons[c * 4 + 1]; CR[c] = cons[c * 4 + 2]; CK[c] = cons[c * 4 + 3];
   }
 
-  // a tiny ripple so the cloth doesn't start perfectly flat
   for (let j = 0; j < ROWS; j++) {
     for (let i = 0; i < COLS; i++) pos[I(i, j) * 3 + 2] = HOOK_Z + Math.sin(i * 1.7 + j * 0.9) * 0.01;
   }
@@ -276,9 +262,6 @@
   }
   const TRI = new Uint32Array(tris);
 
-  // the loop holds the corner; the two edges leave it at their natural angle
-  // the clip bites into the middle of the short edge: the edge is gathered up inside the jaws
-  // and the fabric is pinched across their whole width
   const PINS = [
     [I(MID, 0), 0, 0],
     [I(MID - 1, 0), -0.045, -0.02], [I(MID + 1, 0), 0.045, -0.02],
@@ -287,8 +270,6 @@
   ];
   for (const pn of PINS) invMass[pn[0]] = 0;
 
-  // tethers: no thread can end up farther from the hook than the woven fabric allows
-  // (one set per gripped point, so the fabric just under the clip can't stretch either)
   const TT = PINS.map(([q]) => {
     const t = new Float32Array(N), qi = q % COLS, qj = Math.floor(q / COLS);
     for (let j = 0; j < ROWS; j++) {
@@ -297,7 +278,6 @@
     return t;
   });
 
-  // self-collision: the fabric has a thickness and can never pass through itself
   const COLL_D = REST * 1.05, COLL_D2 = COLL_D * COLL_D, COLL_INV = 1 / COLL_D;
   const HSIZE = 8192, HMASK = HSIZE - 1;
   const cellStart = new Int32Array(HSIZE + 1), cellItems = new Int32Array(N), pCell = new Int32Array(N);
@@ -331,7 +311,6 @@
               if (b <= a) continue;
               const di = GI[b] - ai, dj = GJ[b] - aj;
               if (di <= 2 && di >= -2 && dj <= 2 && dj >= -2) continue;
-              // inside and just under the clip the fabric is meant to be bunched together
               if (Math.abs(ai - MID) + aj <= 5 && Math.abs(GI[b] - MID) + GJ[b] <= 5) continue;
               const kb = b * 3;
               const dx = pos[kb] - pos[ka], dy = pos[kb + 1] - pos[ka + 1], dz = pos[kb + 2] - pos[ka + 2];
@@ -342,7 +321,6 @@
               const d = Math.sqrt(d2);
               const c = (COLL_D - d) / (d * ws);
               const sx = dx * c, sy = dy * c, sz = dz * c;
-              // move apart, and take most of the approaching speed out so layers settle instead of bouncing
               pos[ka] -= sx * wa; pos[ka + 1] -= sy * wa; pos[ka + 2] -= sz * wa;
               pos[kb] += sx * wb; pos[kb + 1] += sy * wb; pos[kb + 2] += sz * wb;
               prev[ka] -= sx * wa * 0.7; prev[ka + 1] -= sy * wa * 0.7; prev[ka + 2] -= sz * wa * 0.7;
@@ -354,7 +332,6 @@
     }
   }
 
-  // the loop is soft fabric: it lines up with the pull of the towel, so the towel can swing from the hook
   const hang = { x: 0, y: TOP, z: HOOK_Z, dx: 0, dy: -1, dz: 0 };
   function updateHang() {
     let cx = 0, cy = 0, cz = 0, n = 0;
@@ -387,7 +364,7 @@
     pos[k] = x; pos[k + 1] = y; pos[k + 2] = z;
   }
 
-  function step(t) {
+  function step(t, collide) {
     updateHang();
     updateWind(t);
     const inv = 1 / SUB, A0 = REST * REST * 0.5, dt2 = SUB * SUB;
@@ -399,7 +376,6 @@
       acc[k + 2] = ext[k + 2];
     }
 
-    // wind on every triangle, using velocity relative to the air
     for (let f = 0; f < TRI.length; f += 3) {
       const a = TRI[f] * 3, b = TRI[f + 1] * 3, c = TRI[f + 2] * 3;
       const e1x = pos[b] - pos[a], e1y = pos[b + 1] - pos[a + 1], e1z = pos[b + 2] - pos[a + 2];
@@ -421,7 +397,6 @@
       acc[c] += fx; acc[c + 1] += fy; acc[c + 2] += fz;
     }
 
-    // verlet integration
     for (let p = 0; p < N; p++) {
       if (invMass[p] === 0) continue;
       const k = p * 3;
@@ -432,7 +407,6 @@
       prev[k] = x; prev[k + 1] = y; prev[k + 2] = z;
     }
 
-    // turn the corner's grip with the loop (rotation taking straight down onto the loop direction)
     const kx = -hang.dz, kz = hang.dx, cth = -hang.dy, fr = 1 / (1 + cth);
     for (const [p, ox, oy] of PINS) {
       const kv = kx * ox;
@@ -442,7 +416,6 @@
         hang.z + kx * oy + kz * kv * fr);
     }
 
-    // keep the weave together
     for (let it = 0; it < ITER; it++) {
       for (let c = 0; c < NC; c++) {
         const pa = CA[c], pb = CB[c];
@@ -474,17 +447,13 @@
       }
     }
 
-    selfCollide();
+    if (collide) selfCollide();
 
-    // never through the wall behind it
     const wz = WALL_Z + 0.04;
     for (let k = 2; k < N * 3; k += 3) if (pos[k] < wz) pos[k] = wz;
   }
-  // SIM-END
 
-  /* ==================================================================
-     RENDERING
-     ================================================================== */
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -494,7 +463,7 @@
     fontsReady.then(reveal);
     return;
   }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(dpr);
   renderer.setClearColor(0x000000, 0);
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -507,7 +476,6 @@
   const LOOK = new THREE.Vector3(0, 0.55, 0);
   let camDist = 16;
 
-  // ---------- woven linen texture, drawn by hand ----------
   function rng(seed) {
     return function () {
       seed |= 0; seed = seed + 0x6D2B79F5 | 0;
@@ -518,7 +486,7 @@
   }
 
   function makeLinen() {
-    const TW = 1024, TH = Math.round(TW * H / W);
+    const TW = 768, TH = Math.round(TW * H / W);
     const cv = document.createElement('canvas'); cv.width = TW; cv.height = TH;
     const bv = document.createElement('canvas'); bv.width = TW; bv.height = TH;
     const g = cv.getContext('2d'), b = bv.getContext('2d');
@@ -527,7 +495,6 @@
     g.fillStyle = TOWEL.linen; g.fillRect(0, 0, TW, TH);
     b.fillStyle = '#808080'; b.fillRect(0, 0, TW, TH);
 
-    // washed, uneven colour
     for (let i = 0; i < 80; i++) {
       const x = r() * TW, y = r() * TH, rad = 60 + r() * 280;
       const light = r() < 0.5;
@@ -539,7 +506,6 @@
       g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
     }
 
-    // woven stripe bands near both short ends
     const bandTop = Math.round(TH * 0.085);
     const pattern = [[0, 5], [14, 18], [41, 5]];
     function band(y0, dir) {
@@ -556,7 +522,6 @@
     band(bandTop, 1);
     band(TH - bandTop, -1);
 
-    // threads: warp and weft, slubby and irregular
     function threads(vertical) {
       const span = vertical ? TW : TH, length = vertical ? TH : TW;
       for (let u = 0; u < span; u += 2) {
@@ -577,7 +542,6 @@
     threads(true);
     threads(false);
 
-    // slubs â€“ the little thick bits that make linen look like linen
     for (let i = 0; i < 2200; i++) {
       const x = r() * TW, y = r() * TH;
       const horiz = r() < 0.6;
@@ -590,7 +554,6 @@
       else { g.fillRect(x, y, th, len); b.fillRect(x, y, th, len); }
     }
 
-    // folded hem with a stitch line
     const HEM = 20;
     g.fillStyle = 'rgba(96,74,44,0.07)';
     g.fillRect(0, 0, TW, HEM); g.fillRect(0, TH - HEM, TW, HEM);
@@ -631,13 +594,10 @@
     return new THREE.CanvasTexture(cv);
   }
 
-  // ---------- the towel ----------
   const linen = makeLinen();
-  // The simulation runs on a coarse grid. What you see is a smooth curved surface drawn
-  // through it, so the point at the hook and every fold stay soft instead of creased.
   const RS = 3;
   const RC = SX * RS + 1, RR = SY * RS + 1, RN = RC * RR;
-  const EC = COLS + 2, ER = ROWS + 2;   // the grid plus one extrapolated ring around it
+  const EC = COLS + 2, ER = ROWS + 2;
   const gx = new Float32Array(EC * ER * 3);
   const rowTmp = new Float32Array(ER * RC * 3);
   const rpos = new Float32Array(RN * 3);
@@ -725,7 +685,6 @@
   }
   geo.setIndex(new THREE.BufferAttribute(ridx, 1));
 
-  // normals straight from the grid (cheap, and smooth across the whole surface)
   const rnorm = new Float32Array(RN * 3);
   const normAttr = new THREE.BufferAttribute(rnorm, 3);
   normAttr.setUsage(THREE.DynamicDrawUsage);
@@ -761,9 +720,8 @@
   scene.add(cloth);
 
   cloth.castShadow = true;
-  cloth.receiveShadow = true;   // folds and the clip shade the towel itself
+  cloth.receiveShadow = true;
 
-  // ---------- the clip with its leather cord ----------
   function makeEnv() {
     const envScene = new THREE.Scene();
     const sg = new THREE.SphereGeometry(10, 32, 16);
@@ -779,7 +737,6 @@
     const win = new THREE.Mesh(new THREE.PlaneGeometry(6, 5), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 3, 2.8) }));
     win.position.set(-7, 4, 5); win.lookAt(0, 0, 0);
     envScene.add(win);
-    // a bright softbox and a dark panel behind the viewer give the metal something to reflect
     const panels = [[2.6, 3.2, -1.5, 0.9, 8, new THREE.Color(4, 3.9, 3.7)], [3.5, 4.5, 1.9, -0.4, 8, new THREE.Color(0.03, 0.03, 0.03)],
                     [14, 0.8, 0, 6, -6, new THREE.Color(1.6, 1.6, 1.5)]];
     for (const [w, h, x, y, z, col] of panels) {
@@ -793,7 +750,15 @@
     return tex;
   }
   const envTex = makeEnv();
-  const steel = new THREE.MeshStandardMaterial({ color: 0xf4f4f2, metalness: 1, roughness: 0.07, envMap: envTex, envMapIntensity: 1.25 });
+  const steel = new THREE.MeshPhysicalMaterial({
+    color: 0xe6e6e2,
+    metalness: 1,
+    roughness: 0.2,
+    envMap: envTex,
+    envMapIntensity: 1.4,
+    clearcoat: 0.55,
+    clearcoatRoughness: 0.16,
+  });
   const nailSteel = new THREE.MeshStandardMaterial({ color: 0xa8a8a2, metalness: 1, roughness: 0.38, envMap: envTex });
 
   function makeLeather() {
@@ -814,51 +779,78 @@
   const leather = new THREE.MeshStandardMaterial({ map: makeLeather(), roughness: 0.85, metalness: 0 });
 
   const clip = new THREE.Group();
-  const CL = 0.62;                       // the clip body is drawn at this scale
+  const CL = 0.62;
   const body = new THREE.Group();
   body.scale.setScalar(CL);
-  body.position.y = 0.1 * CL - 0.115;    // jaws end just below the gathered fabric
-  // two jaw plates, wide at the bottom and narrowing to a neck at the top
+  body.position.y = 0.1 * CL - 0.115;
   const jaw = new THREE.Shape();
-  jaw.moveTo(-0.145, -0.1);
-  jaw.lineTo(0.145, -0.1);
-  jaw.lineTo(0.145, -0.085);
-  jaw.quadraticCurveTo(0.1, 0.06, 0.085, 0.12);
+  jaw.moveTo(-0.12, -0.1);
+  jaw.lineTo(0.12, -0.1);
+  jaw.quadraticCurveTo(0.145, -0.1, 0.145, -0.078);
+  jaw.quadraticCurveTo(0.1, 0.055, 0.085, 0.12);
   jaw.quadraticCurveTo(0.06, 0.14, 0.06, 0.16);
   jaw.lineTo(0.06, 0.215);
   jaw.lineTo(-0.06, 0.215);
   jaw.lineTo(-0.06, 0.16);
   jaw.quadraticCurveTo(-0.06, 0.14, -0.085, 0.12);
-  jaw.quadraticCurveTo(-0.1, 0.06, -0.145, -0.085);
+  jaw.quadraticCurveTo(-0.1, 0.055, -0.145, -0.078);
+  jaw.quadraticCurveTo(-0.145, -0.1, -0.12, -0.1);
   jaw.closePath();
-  const jawGeo = new THREE.ExtrudeGeometry(jaw, { depth: 0.007, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 3, curveSegments: 12 });
-  // the plates are gently curved, like pressed sheet metal
+  const jawGeo = new THREE.ExtrudeGeometry(jaw, { depth: 0.008, bevelEnabled: true, bevelThickness: 0.0035, bevelSize: 0.0035, bevelSegments: 6, curveSegments: 28 });
   function bentJaw(sign) {
     const gm = jawGeo.clone(), p = gm.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const y = p.getY(i), x = p.getX(i);
-      p.setZ(i, p.getZ(i) * sign + sign * (0.55 * (y - 0.06) * (y - 0.06) + 0.35 * x * x));
+      p.setZ(i, p.getZ(i) * sign + sign * (0.42 * (y - 0.06) * (y - 0.06) + 0.22 * x * x));
     }
-    gm.computeVertexNormals();
+    const nVert = p.count;
+    const keyOf = (i) => Math.round(p.getX(i) * 1e5) + ',' + Math.round(p.getY(i) * 1e5) + ',' + Math.round(p.getZ(i) * 1e5);
+    const hash = new Map(), map = new Int32Array(nVert), acc = [];
+    for (let i = 0; i < nVert; i++) {
+      const k = keyOf(i);
+      let id = hash.get(k);
+      if (id === undefined) { id = acc.length; hash.set(k, id); acc.push([0, 0, 0]); }
+      map[i] = id;
+    }
+    const add = (a, b, c) => {
+      const ax = p.getX(a), ay = p.getY(a), az = p.getZ(a);
+      const bx = p.getX(b), by = p.getY(b), bz = p.getZ(b);
+      const cx = p.getX(c), cy = p.getY(c), cz = p.getZ(c);
+      const nx = (by - ay) * (cz - az) - (bz - az) * (cy - ay);
+      const ny = (bz - az) * (cx - ax) - (bx - ax) * (cz - az);
+      const nz = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+      for (const i of [a, b, c]) { const s = acc[map[i]]; s[0] += nx; s[1] += ny; s[2] += nz; }
+    };
+    const idx = gm.index;
+    if (idx) {
+      for (let t = 0; t < idx.count; t += 3) add(idx.getX(t), idx.getX(t + 1), idx.getX(t + 2));
+    } else {
+      for (let t = 0; t < nVert; t += 3) add(t, t + 1, t + 2);
+    }
+    const normals = new Float32Array(nVert * 3);
+    for (let i = 0; i < nVert; i++) {
+      const s = acc[map[i]];
+      const l = Math.sqrt(s[0] * s[0] + s[1] * s[1] + s[2] * s[2]) || 1;
+      normals[i * 3] = s[0] / l; normals[i * 3 + 1] = s[1] / l; normals[i * 3 + 2] = s[2] / l;
+    }
+    gm.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
     return gm;
   }
-  const front = new THREE.Mesh(bentJaw(1), steel); front.position.z = 0.02;
-  const back = new THREE.Mesh(bentJaw(-1), steel); back.position.z = -0.02;
-  // the rolled hinge with its spring, and the crimp that holds the cord
-  const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.15, 24), steel);
+  const front = new THREE.Mesh(bentJaw(1), steel); front.position.z = 0.014;
+  const back = new THREE.Mesh(bentJaw(-1), steel); back.position.z = -0.014;
+  const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.15, 48), steel);
   hinge.rotation.z = Math.PI / 2; hinge.position.y = 0.185;
   const ears = [-1, 1].map((sd) => {
-    const e = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.009, 12, 24), steel);
+    const e = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.009, 20, 48), steel);
     e.rotation.y = Math.PI / 2; e.position.set(sd * 0.075, 0.185, 0);
     return e;
   });
-  const crimp = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, 0.085, 24), steel);
+  const crimp = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, 0.085, 48), steel);
   crimp.position.y = 0.255;
   body.add(front, back, hinge, ...ears, crimp);
-  // the leather cord: up from the crimp and round over the nail
   const CORD_R = 0.011, TOP_R = 0.05;
   const crimpTop = body.position.y + 0.29 * CL;
-  const cy = LOOP_L + CORD_R - TOP_R;     // centre of the round top; its inside rests on the nail
+  const cy = LOOP_L + CORD_R - TOP_R;
   const cordPts = [[-0.008, crimpTop], [-0.022, crimpTop + 0.07], [-0.042, crimpTop + 0.17], [-TOP_R, cy - 0.03]];
   for (let k = 0; k <= 8; k++) {
     const a = Math.PI - (k / 8) * Math.PI;
@@ -866,19 +858,18 @@
   }
   cordPts.push([TOP_R, cy - 0.03], [0.042, crimpTop + 0.17], [0.022, crimpTop + 0.07], [0.008, crimpTop]);
   const cordCurve = new THREE.CatmullRomCurve3(cordPts.map(([x, y]) => new THREE.Vector3(x, y, 0)), false, 'centripetal');
-  const cord = new THREE.Mesh(new THREE.TubeGeometry(cordCurve, 120, CORD_R, 10, false), leather);
+  const cord = new THREE.Mesh(new THREE.TubeGeometry(cordCurve, 120, CORD_R, 16, false), leather);
   clip.add(body, cord);
   clip.traverse((o) => { o.castShadow = true; });
   scene.add(clip);
   const loop = clip;
 
-  // ---------- the nail in the wall ----------
   const NAIL_R = 0.012;
   const nail = new THREE.Group();
-  const shank = new THREE.Mesh(new THREE.CylinderGeometry(NAIL_R, NAIL_R, 0.25, 16), nailSteel);
+  const shank = new THREE.Mesh(new THREE.CylinderGeometry(NAIL_R, NAIL_R, 0.25, 32), nailSteel);
   shank.rotation.x = Math.PI / 2;
   shank.position.z = 0.125;
-  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.012, 28), nailSteel);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.012, 48), nailSteel);
   head.rotation.x = Math.PI / 2;
   head.position.z = 0.25;
   nail.add(shank, head);
@@ -887,15 +878,13 @@
   scene.add(nail);
   const UP = new THREE.Vector3(0, 1, 0), loopDir = new THREE.Vector3();
 
-  // ---------- the wall behind catches a soft shadow ----------
   const wallMat = new THREE.ShadowMaterial({ opacity: 0.2 });
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(60, 40), wallMat);
   wall.position.z = WALL_Z;
   wall.receiveShadow = true;
   scene.add(wall);
 
-  // ---------- dust drifting in the light ----------
-  const MOTES = 46;
+  const MOTES = 18;
   const moteGeo = new THREE.BufferGeometry();
   const motePos = new Float32Array(MOTES * 3);
   const moteSeed = new Float32Array(MOTES);
@@ -916,7 +905,6 @@
   motes.frustumCulled = false;
   scene.add(motes);
 
-  // ---------- light from the window ----------
   const hemi = new THREE.HemisphereLight(0xfff6ea, 0xaeb3a8, 0.6);
   const key = new THREE.DirectionalLight(0xfff2dc, 1.25);
   key.position.set(-4.5, 5, 8);
@@ -944,10 +932,9 @@
   moteMat.color.set(0xffffff);
   moteMat.opacity = 0.45;
   renderer.toneMappingExposure = 0.96;
-  steel.envMapIntensity = 1.15;
-  nailSteel.envMapIntensity = 0.9;
+  steel.envMapIntensity = 1.4;
+  nailSteel.envMapIntensity = 1.05;
 
-  // ---------- size ----------
   function resize() {
     const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
     renderer.setSize(w, h, false);
@@ -955,13 +942,13 @@
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     camDist = Math.max(7.0 / 2 / t, 4.6 / 2 / (t * camera.aspect));
     camera.updateProjectionMatrix();
+    camera.position.set(0, 1.2, camDist);
+    camera.lookAt(LOOK);
+    camera.updateMatrixWorld();
   }
   window.addEventListener('resize', resize);
   resize();
 
-  /* ==================================================================
-     HOVER â€“ the cloth gives way a little under the pointer
-     ================================================================== */
   const pointer = { x: 0, y: 0, vx: 0, vy: 0, inside: false, energy: 0, lastMove: 0, lastT: 0, seen: false };
   const par = { x: 0, y: 0 };
 
@@ -1040,11 +1027,6 @@
     }
   }
 
-  /* ==================================================================
-     LOOP
-     ================================================================== */
-  // let it settle before the first frame, so it starts already draped.
-  // do it in small chunks so the page stays responsive.
   let simTime = 0;
   let accum = 0, last = performance.now(), clock = 0, revealed = false;
 
@@ -1054,16 +1036,13 @@
     clock += dt;
 
     const drift = CALM;
-    camera.position.set(0, 1.2, camDist);
-    camera.lookAt(LOOK);
-    camera.updateMatrixWorld();
 
     pointerForces();
 
     accum += dt;
     let n = 0;
-    while (accum >= SUB && n < 6) { step(simTime); simTime += SUB; accum -= SUB; n++; }
-    if (n === 6) accum = 0;
+    while (accum >= SUB && n < 3) { step(simTime, n === 0); simTime += SUB; accum -= SUB; n++; }
+    if (n === 3) accum = 0;
 
     smoothSurface();
     surfaceNormals();
@@ -1072,7 +1051,6 @@
     posAttr.needsUpdate = true;
     normAttr.needsUpdate = true;
 
-    // dust
     for (let m = 0; m < MOTES; m++) {
       const k = m * 3, sd = moteSeed[m];
       motePos[k] += (0.05 + Math.sin(clock * 0.3 + sd) * 0.04) * dt * wind.x * 0.25 * drift;
@@ -1085,15 +1063,20 @@
 
     renderer.render(scene, camera);
     if (!revealed) { revealed = true; fontsReady.then(reveal); }
-    requestAnimationFrame(frame);
+    if (pageVisible) requestAnimationFrame(frame);
   }
+  let pageVisible = true;
+  document.addEventListener('visibilitychange', () => {
+    pageVisible = !document.hidden;
+    if (pageVisible) { last = performance.now(); requestAnimationFrame(frame); }
+  });
   (function settle(left) {
-    const chunk = 24;
+    const chunk = 30;
     const n = Math.min(chunk, left);
-    for (let i = 0; i < n; i++) { step(simTime); simTime += SUB; }
+    for (let i = 0; i < n; i++) { step(simTime, i === 0); simTime += SUB; }
     if (left - n > 0) requestAnimationFrame(() => settle(left - n));
     else { clock = simTime; last = performance.now(); requestAnimationFrame(frame); }
-  })(480);
+  })(280);
 })();
 </script>
 </body>
