@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Saddi CPH</title>
-<meta name="description" content="Saddi CPH. Something is cooking. Stay tuned.">
+<title>saddi</title>
+<meta name="description" content="saddi. Something is cooking. Stay tuned.">
 <meta name="theme-color" content="#f6e29a">
 <style>html,body{background:#f6e29a}</style>
 <link rel="preload" href="logo.png?v=2" as="image">
@@ -729,6 +729,16 @@
     metalness: 0,
     side: THREE.DoubleSide,
   });
+  clothMat.customProgramCacheKey = () => 'clothSoftShadow';
+  clothMat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <lights_fragment_begin>',
+      THREE.ShaderChunk.lights_fragment_begin.replace(
+        /directLight\.color \*= all\( bvec2\( directionalLight\.shadow, directLight\.visible \) \) \? getShadow\( directionalShadowMap\[ i \], directionalLight\.shadowMapSize, directionalLight\.shadowBias, directionalLight\.shadowRadius, vDirectionalShadowCoord\[ i \] \) : 1\.0;/g,
+        'directLight.color *= mix(1.0, all( bvec2( directionalLight.shadow, directLight.visible ) ) ? getShadow( directionalShadowMap[ i ], directionalLight.shadowMapSize, directionalLight.shadowBias, directionalLight.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0, 0.4);'
+      )
+    );
+  };
   const cloth = new THREE.Mesh(geo, clothMat);
   cloth.frustumCulled = false;
   scene.add(cloth);
@@ -882,7 +892,7 @@
   const cordCurve = new THREE.CatmullRomCurve3(cordPts.map(([x, y]) => new THREE.Vector3(x, y, 0)), false, 'centripetal');
   const cord = new THREE.Mesh(new THREE.TubeGeometry(cordCurve, PHONE ? 80 : 120, CORD_R, PHONE ? 12 : 16, false), leather);
   clip.add(body, cord);
-  clip.traverse((o) => { o.castShadow = true; });
+  clip.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   scene.add(clip);
   const loop = clip;
 
@@ -895,16 +905,16 @@
   head.rotation.x = Math.PI / 2;
   head.position.z = 0.25;
   nail.add(shank, head);
-  nail.position.set(0, HOOK_Y - NAIL_R, WALL_Z);
-  nail.traverse((o) => { o.castShadow = true; });
+  nail.position.set(0, HOOK_Y - NAIL_R, WALL_Z + 0.002);
+  nail.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   scene.add(nail);
   const UP = new THREE.Vector3(0, 1, 0), loopDir = new THREE.Vector3();
 
-  const wallMat = new THREE.ShadowMaterial({ opacity: 0.2, toneMapped: false });
+  const wallMat = new THREE.ShadowMaterial({ opacity: 0.12, toneMapped: false });
   wallMat.onBeforeCompile = (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
       'gl_FragColor = vec4( color, opacity * ( 1.0 - getShadowMask() ) );',
-      'float occl = 1.0 - getShadowMask(); occl = max(0.0, (occl - 0.1) / 0.9); float fw = fwidth(occl) * 2.2; occl = smoothstep(-fw, 1.0 + fw, occl); if (occl < 0.015) discard; gl_FragColor = vec4( color, opacity * occl );'
+      'float occl = 1.0 - getShadowMask(); occl = max(0.0, (occl - 0.035) / 0.965); float fw = fwidth(occl) * 1.15; occl = smoothstep(-fw, 1.0 + fw, occl); if (occl < 0.006) discard; gl_FragColor = vec4( color, opacity * occl );'
     );
   };
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(14, 16), wallMat);
@@ -916,10 +926,10 @@
   const key = new THREE.DirectionalLight(0xfff2dc, 1.25);
   key.position.set(-4.5, 5, 8);
   key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
-  key.shadow.radius = PHONE ? 10 : 12;
-  key.shadow.bias = -0.0005;
-  Object.assign(key.shadow.camera, { left: -4, right: 4.5, top: 5, bottom: -4.5, near: 1, far: 30 });
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.radius = PHONE ? 8 : 7;
+  key.shadow.bias = -0.0002;
+  Object.assign(key.shadow.camera, { left: -2.8, right: 3.2, top: 5.4, bottom: -3.6, near: 1, far: 28 });
   const fill = new THREE.DirectionalLight(0xe6edf2, 0.3);
   fill.position.set(6, 1.5, 6);
   const rim = new THREE.DirectionalLight(0xffe6c2, 0.35);
@@ -935,7 +945,7 @@
   fill.intensity = 0.24;
   rim.color.set(0xffffff);
   rim.intensity = 0.4;
-  wallMat.opacity = 0.2;
+  wallMat.opacity = 0.12;
   renderer.toneMappingExposure = 0.96;
   steel.envMapIntensity = 1.4;
   nailSteel.envMapIntensity = 1.05;
